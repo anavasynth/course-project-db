@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+  <link href="{{url_for('static', filename = 'css/bootstrap.min.css')}}" rel="stylesheet">
+  <link href="{{url_for('static', filename= 'css/sidebar.css')}}" rel="stylesheet">
+<link href="{{url_for('static', filename= 'css/style.css')}}" rel="stylesheet">
+</head>
+<body>
+
+<nav>
+    <a href="#" id="logo">Anastars</a>
+    <ul>
+        <li><a href="{{ url_for('Index') }}">Головна</a></li>
+        <li class="dropdown">
+            <a href="">Таблиці</a>
+            <ul class="dropdown-content">
+                <li><a href="{{ url_for('contestants') }}">Конкурсанти</a></li>
+                <li><a href="{{ url_for('songs') }}">Пісні</a></li>
+                <li><a href="{{ url_for('broadcasts') }}">Ефіри</a></li>
+                <li><a href="{{ url_for('performances') }}">Виступи</a></li>
+                <li><a href="{{ url_for('smses') }}">SMS голосування</a></li>
+                <li><a href="{{ url_for('calls') }}">Дзвінки</a></li>
+                <li><a href="{{ url_for('juries') }}">Члени журі</a></li>
+                <li><a href="{{ url_for('juryVoting') }}">Голоси журі</a></li>
+                <li><a href="#">Результати</a></li>
+            </ul>
+        </li>
+        <li><a href="{{ url_for('queries') }}">Запити</a></li>
+        {% if role == 'owner' or role == 'administrator' %}
+        <li><a href="{{ url_for('adminpanel') }}">Адмін панель</a></li>
+        {% endif %}
+        <li><a href="{{ url_for('logout') }}" onclick="return confirm('Ви впевнені, що бажаєте вийти?')">Вийти</a></li>
+    </ul>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div id="flash-messages">
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<div class="col-md-12 mt-4">
+    <h2 id="ll1">Голоси журі
+        {% if role == 'administrator' or role == 'owner' %}
+        <button type="button" class="btn btn-success pull-right" data-toggle="modal" data-target="#workerModal">Додати конкурсанта</button>
+        {% endif %}
+    </h2>
+
+    <!-- Поле для пошуку -->
+    <input type="text" id="jurySearchInput" class="form-control" placeholder="Пошук голосів журі"/>
+<div class="table-responsive-scroll">
+    <table class="table table-striped mt-3">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>ID конкурсанта</th>
+                <th>ID члена журі</th>
+                <th>ID ефіру</th>
+                <th>Оцінка</th>
+                {% if role == 'administrator' or role == 'owner' or role == 'operator' %}
+                <th>Дія</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody id="juryTableBody">
+            {% for juryVote in juryVoting %}
+            <tr>
+                <td>{{ juryVote.0 }}</td>
+                <td>{{ juryVote.1 }}</td>
+                <td>{{ juryVote.2 }}</td>
+                <td>{{ juryVote.3 }}</td>
+                <td>{{ juryVote.4 }}</td>
+                {% if role == 'administrator' or role == 'owner' or role == 'operator' %}
+                <td>
+                    <a href="/update_worker/{{ juryVote.0 }}" class="btn btn-warning btn-xs" data-toggle="modal" data-target="#editWorkerModal{{ juryVote.0 }}">Редагувати</a>
+                    {% if role == 'administrator' or role == 'owner' %}
+                    <a href="/delete_jury_vote/{{ juryVote.0 }}" class="btn btn-danger btn-xs" onclick="return confirm('Ви впевнені, що хочете вилучити?')">Вилучити</a>
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+
+            <!-- Модальне вікно для редагування голосу журі -->
+            <div id="editWorkerModal{{ juryVote.0 }}" class="modal fade" role="dialog">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                            <h4 class="modal-title">Редагувати голос журі</h4>
+                        </div>
+                        <div class="modal-body">
+                            <form action="{{ url_for('update_juryVote') }}" method="POST">
+                                <input type="hidden" name="vote_id" value="{{ juryVote.0 }}">
+                                <div class="form-group">
+                                    <label>Ім'я конкурсанта:</label>
+                                    <input type="text" class="form-control" name="contestant_id" value="{{ juryVote.1 }}" required
+                                    {% if role == 'operator' %} readonly="readonly" {% endif %}>
+                                </div>
+                                <div class="form-group">
+                                    <label>Прізвище конкурсанта:</label>
+                                    <input type="text" class="form-control" name="jury_id" value="{{ juryVote.2 }}" required
+                                    {% if role == 'operator' %} readonly="readonly" {% endif %}>
+                                </div>
+                                <div class="form-group">
+                                    <label>Місто:</label>
+                                    <input type="text" class="form-control" name="broadcast_id" value="{{ juryVote.3 }}" required
+                                    {% if role == 'operator' %} readonly="readonly" {% endif %}>
+                                </div>
+                                <div class="form-group">
+                                    <label>Оцінка:</label>
+                                    <input type="text" class="form-control" name="score" value="{{ juryVote.4 }}" required>
+                                </div>
+                                <div class="form-group">
+                                    <button class="btn btn-primary" type="submit">Оновити дані</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Закрити</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<!-- Модальне вікно для додавання голосу журі -->
+<div id="workerModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Введіть дані конкурсанта</h4>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('insert_juryVote') }}" method="POST">
+                    <div class="form-group">
+                        <label>ID конкурсанта:</label>
+                        <input type="text" class="form-control" name="contestant_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label>ID члена журі:</label>
+                        <input type="text" class="form-control" name="jury_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label>ID ефіру:</label>
+                        <input type="text" class="form-control" name="broadcast_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Оцінка:</label>
+                        <input type="text" class="form-control" name="score" required>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-primary" type="submit">Додати конкурсанта</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Закрити</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('jurySearchInput').addEventListener('keyup', function () {
+    const query = this.value;
+
+    fetch(`/juryVoting_table?query=${query}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            const tableBody = document.getElementById('juryTableBody');
+            tableBody.innerHTML = '';  // Clear existing rows
+
+            data.forEach(juryVote => {
+                const row = `<tr>
+                    <td>${juryVote[0]}</td>
+                    <td>${juryVote[1]}</td>
+                    <td>${juryVote[2]}</td>
+                    <td>${juryVote[3]}</td>
+                    <td>${juryVote[4]}</td>
+                    {% if role == 'administrator' or role == 'owner' %}
+                    <td>
+                        <a href="/update_worker/${juryVote[0]}" class="btn btn-warning btn-xs" data-toggle="modal" data-target="#editWorkerModal${juryVote[0]}">Редагувати</a>
+                        <a href="/delete_jury_vote/${juryVote[0]}" class="btn btn-danger btn-xs" onclick="return confirm('Ви впевнені, що хочете вилучити?')">Вилучити</a>
+                    </td>
+                    {% endif %}
+                </tr>`;
+
+                tableBody.insertAdjacentHTML('beforeend', row);
+            });
+        })
+        .catch(error => console.error('Error:', error));
+});
+</script>
+
+<script type="text/javascript" src="{{url_for('static', filename='js/jquery-3.2.1.min.js') }}"></script>
+<script type="text/javascript" src="{{url_for('static', filename='js/bootstrap.min.js')}}"></script>
+</body>
+</html>

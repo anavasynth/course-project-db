@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+  <link href="{{url_for('static', filename = 'css/bootstrap.min.css')}}" rel="stylesheet">
+  <link href="{{url_for('static', filename= 'css/sidebar.css')}}" rel="stylesheet">
+<link href="{{url_for('static', filename= 'css/style.css')}}" rel="stylesheet">
+</head>
+<body>
+
+<nav>
+    <a href="#" id="logo">Anastars</a>
+    <ul>
+        <li><a href="{{ url_for('Index') }}">Головна</a></li>
+        <li class="dropdown">
+            <a href="">Таблиці</a>
+            <ul class="dropdown-content">
+                <li><a href="{{ url_for('contestants') }}">Конкурсанти</a></li>
+                <li><a href="{{ url_for('songs') }}">Пісні</a></li>
+                <li><a href="{{ url_for('broadcasts') }}">Ефіри</a></li>
+                <li><a href="{{ url_for('performances') }}">Виступи</a></li>
+                <li><a href="{{ url_for('smses') }}">SMS голосування</a></li>
+                <li><a href="{{ url_for('calls') }}">Дзвінки</a></li>
+                <li><a href="{{ url_for('juries') }}">Члени журі</a></li>
+                <li><a href="{{ url_for('juryVoting') }}">Голоси журі</a></li>
+                <li><a href="#">Результати</a></li>
+            </ul>
+        </li>
+        <li><a href="{{ url_for('queries') }}">Запити</a></li>
+        {% if role == 'owner' or role == 'administrator' %}
+        <li><a href="{{ url_for('adminpanel') }}">Адмін панель</a></li>
+        {% endif %}
+        <li><a href="{{ url_for('logout') }}" onclick="return confirm('Ви впевнені, що бажаєте вийти?')">Вийти</a></li>
+    </ul>
+</nav>
+
+                                 {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div id="flash-messages">
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<div class="col-md-12">
+    <!-- List of performances -->
+    <h2>Список виступів
+        {% if role == 'administrator' or role == 'owner' %}
+        <button type="button" class="btn btn-success pull-right" data-toggle="modal" data-target="#broadcastModal">Додати виступ</button>
+        {% endif %}
+    </h2>
+
+    <!-- Search input -->
+    <input type="text" id="performanceSearchInput" class="form-control" placeholder="Пошук виступів" />
+
+<div class="table-responsive-scroll">
+    <table class="table table-striped mt-3">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>ID ефіру</th>
+                <th>ID конкурсанта</th>
+                <th>ID пісні</th>
+                <th>Порядковий номер</th>
+                {% if role == 'administrator' or role == 'owner' or role == 'operator' %}
+                <th>Дія</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody id="performancesTableBody">
+            {% for performance in performances %}
+            <tr>
+                <td>{{ performance.0 }}</td>
+                <td>{{ performance.1 }}</td>
+                <td>{{ performance.2 }}</td>
+                <td>{{ performance.3 }}</td>
+                <td>{{ performance.4 }}</td>
+                {% if role == 'administrator' or role == 'owner' or role == 'operator' %}
+                <td>
+                    <a href="/update_worker/{{ performance.0 }}" class="btn btn-warning btn-xs" data-toggle="modal" data-target="#editWorkerModal{{ performance.0 }}">Редагувати</a>
+                    {% if role == 'administrator' or role == 'owner' %}
+                    <a href="/delete_performance/{{ performance.0 }}" class="btn btn-danger btn-xs" onclick="return confirm('Ви впевнені, що хочете видалити?')">Вилучити</a>
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+
+            <!-- Modal for editing each performance -->
+            <div id="editWorkerModal{{ performance.0 }}" class="modal fade" role="dialog">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                            <h4 class="modal-title">Редагувати пісню</h4>
+                        </div>
+                        <div class="modal-body">
+                            <form id="performanceEditForm" action="{{ url_for('update_performance') }}" method="POST">
+                                <input type="hidden" name="performance_id" value="{{ performance.0 }}">
+                                <div class="form-group">
+                                    <label>ID ефіру</label>
+                                    <input type="text" class="form-control" name="broadcast_id" value="{{ performance.1 }}" required
+                                    {% if role == 'operator' %} readonly="readonly" {% endif %}>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>ID конкурсанта</label>
+                                    <input type="text" class="form-control" name="contestant_id" value="{{ performance.2 }}" required>
+                                    <button type="button" class="btn btn-secondary" id="selectContestantEdit{{ performance.0 }}">Вибрати конкурсанта</button>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>ID пісні</label>
+                                    <select class="form-control" name="song_id" id="songIdEdit" required>
+                                        <option value="">Оберіть пісню</option>
+                                        {% for song in songs %}
+                                            <option value="{{ song.id }}" {% if song.id == performance.3 %}selected{% endif %}>{{ song.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Порядковий номер</label>
+                                    <input type="text" class="form-control" name="sequence_number" value="{{ performance.4 }}" required
+                                    {% if role == 'operator' %} readonly="readonly" {% endif %}>
+                                </div>
+
+                                <div class="form-group">
+                                    <button class="btn btn-primary" type="submit">Оновити виступ</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Закрити</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<!-- Modal for adding a new performance -->
+<div id="broadcastModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Введіть дані виступу</h4>
+            </div>
+            <div class="modal-body">
+                <form id="performanceForm" action="{{ url_for('insert_performance') }}" method="POST">
+                    <div class="form-group">
+                        <label>ID ефіру</label>
+                        <input type="text" class="form-control" name="broadcast_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label>ID конкурсанта</label>
+                        <input type="text" class="form-control" name="contestant_id" id="contestantId" required>
+                        <button type="button" class="btn btn-secondary" id="selectContestant">Вибрати конкурсанта</button>
+                    </div>
+                    <div class="form-group">
+                        <label>ID пісні</label>
+                        <select class="form-control" name="song_id" id="songId" required>
+                            <option value="">Оберіть пісню</option>
+                            <!-- List of songs will be populated via JavaScript -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Порядковий номер</label>
+                        <input type="text" class="form-control" name="sequence_number" required>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-primary" type="submit">Додати виступ</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Закрити</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script type="text/javascript" src="{{url_for('static', filename='js/jquery-3.2.1.min.js') }}"></script>
+<script type="text/javascript" src="{{url_for('static', filename='js/bootstrap.min.js')}}"></script>
+<script>
+$(document).ready(function() {
+    // Functionality for adding performance
+    $('#selectContestant').on('click', function() {
+        const contestantId = $('#contestantId').val();
+
+        if (contestantId) {
+            $.ajax({
+                url: `/get_songs/${contestantId}`,
+                type: 'GET',
+                success: function(songs) {
+                    $('#songId').empty(); // Clear the song list for the add form
+                    $('#songId').append('<option value="">Оберіть пісню</option>');
+
+                    // Adding songs to the list
+                    songs.forEach(function(song) {
+                        $('#songId').append(`<option value="${song[0]}">${song[1]}</option>`);
+                    });
+                },
+                error: function() {
+                    alert('Помилка при завантаженні пісень. Перевірте правильність ID конкурсанта.');
+                }
+            });
+        } else {
+            alert('Будь ласка, введіть ID конкурсанта.');
+        }
+    });
+
+    // Functionality for editing performance - use a unique ID for each button
+    $('[id^="selectContestantEdit"]').on('click', function() {
+        const buttonId = $(this).attr('id'); // Get the button ID
+        const contestantId = $(this).closest('.modal-body').find('input[name="contestant_id"]').val(); // Get the contestant ID from the edit form
+
+        if (contestantId) {
+            $.ajax({
+                url: `/get_songs/${contestantId}`,
+                type: 'GET',
+                success: function(songs) {
+                    const songSelect = $(this).closest('.modal-body').find('#songIdEdit'); // Target the specific song select for this modal
+                    songSelect.empty(); // Clear the song list
+                    songSelect.append('<option value="">Оберіть пісню</option>');
+
+                    // Adding songs to the list
+                    songs.forEach(function(song) {
+                        songSelect.append(`<option value="${song[0]}">${song[1]}</option>`);
+                    });
+                }.bind(this), // Bind the context to use `this` correctly
+                error: function() {
+                    alert('Помилка при завантаженні пісень. Перевірте правильність ID конкурсанта.');
+                }
+            });
+        } else {
+            alert('Будь ласка, введіть ID конкурсанта.');
+        }
+    });
+});
+
+document.getElementById('performanceSearchInput').addEventListener('keyup', function () {
+    const query = this.value;
+
+    fetch(`/performances_table?query=${query}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            const tableBody = document.getElementById('performancesTableBody');
+            tableBody.innerHTML = '';  // Clear existing rows
+
+            data.forEach(performance => {
+                const row = `<tr>
+                    <td>${performance[0]}</td>
+                    <td>${performance[1]}</td>
+                    <td>${performance[2]}</td>
+                    <td>${performance[3]}</td>
+                    <td>${performance[4]}</td>
+                    {% if role == 'administrator' or role == 'owner' %}
+                    <td>
+                        <a href="#" class="btn btn-warning btn-xs" data-toggle="modal"
+                           data-target="#editWorkerModal${performance[0]}">Редагувати</a>
+                        <a href="/delete_performance/${performance[0]}" class="btn btn-danger btn-xs" onclick="return confirm('Ви впевнені, що хочете видалити?')">Вилучити</a>
+                    </td>
+                    {% endif %}
+                </tr>`;
+
+                tableBody.insertAdjacentHTML('beforeend', row);
+            });
+        })
+        .catch(error => console.error('Error:', error));
+});
+
+
+</script>
+
+</body>
+</html>

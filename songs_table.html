@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+  <link href="{{url_for('static', filename = 'css/bootstrap.min.css')}}" rel="stylesheet">
+  <link href="{{url_for('static', filename= 'css/sidebar.css')}}" rel="stylesheet">
+<link href="{{url_for('static', filename= 'css/style.css')}}" rel="stylesheet">
+</head>
+<body>
+
+<nav>
+    <a href="#" id="logo">Anastars</a>
+    <ul>
+        <li><a href="{{ url_for('Index') }}">Головна</a></li>
+        <li class="dropdown">
+            <a href="">Таблиці</a>
+            <ul class="dropdown-content">
+                <li><a href="{{ url_for('contestants') }}">Конкурсанти</a></li>
+                <li><a href="{{ url_for('songs') }}">Пісні</a></li>
+                <li><a href="{{ url_for('broadcasts') }}">Ефіри</a></li>
+                <li><a href="{{ url_for('performances') }}">Виступи</a></li>
+                <li><a href="{{ url_for('smses') }}">SMS голосування</a></li>
+                <li><a href="{{ url_for('calls') }}">Дзвінки</a></li>
+                <li><a href="{{ url_for('juries') }}">Члени журі</a></li>
+                <li><a href="{{ url_for('juryVoting') }}">Голоси журі</a></li>
+                <li><a href="#">Результати</a></li>
+            </ul>
+        </li>
+        <li><a href="{{ url_for('queries') }}">Запити</a></li>
+        {% if role == 'owner' or role == 'administrator' %}
+        <li><a href="{{ url_for('adminpanel') }}">Адмін панель</a></li>
+        {% endif %}
+        <li><a href="{{ url_for('logout') }}" onclick="return confirm('Ви впевнені, що бажаєте вийти?')">Вийти</a></li>
+    </ul>
+</nav>
+
+                                 {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div id="flash-messages">
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<div class="col-md-12 mt-4">
+    <h2 id="ll1">Список пісень
+        {% if role == 'administrator' or role == 'owner' %}
+        <button type="button" class="btn btn-success pull-right" data-toggle="modal" data-target="#songModal">Додати пісню</button>
+        {% endif %}
+    </h2>
+
+    <!-- Search input -->
+    <input type="text" id="songSearchInput" class="form-control" placeholder="Пошук пісень"/>
+
+<div class="table-responsive-scroll">
+    <table class="table table-striped mt-3">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Назва</th>
+            <th>ID Учасника</th>
+            {% if role == 'administrator' or role == 'owner' or role == 'operator' %}
+            <th>Дія</th>
+            {% endif %}
+        </tr>
+        </thead>
+        <tbody id="songsTableBody">
+        {% for song in songs %}
+        <tr>
+            <td>{{ song[0] }}</td>
+            <td>{{ song[1] }}</td>
+            <td>{{ song[2] }}</td>
+            {% if role == 'administrator' or role == 'owner' or role == 'operator' %}
+            <td>
+                <!-- Edit button triggers the modal to edit the song -->
+                <a href="#" class="btn btn-warning btn-xs" data-toggle="modal" data-target="#editSongModal{{ song[0] }}">Редагувати</a>
+                <!-- Delete button with confirmation -->
+                {% if role == 'administrator' or role == 'owner' %}
+                <a href="/delete_song/{{ song[0] }}" class="btn btn-danger btn-xs" onclick="return confirm('Are You Sure For Delete?')">Вилучити</a>
+                {% endif %}
+            </td>
+            {% endif %}
+        </tr>
+
+<!-- Modal for editing each song -->
+<div id="editSongModal{{ song[0] }}" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Редагувати Пісню</h4>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ url_for('update_song') }}">
+                    <input type="hidden" name="song_id" value="{{ song[0] }}">
+                    <div class="form-group">
+                        <label>Назва пісні:</label>
+                        <input type="text" class="form-control" name="song_title" value="{{ song[1] }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editSongContestantId{{ song[0] }}">ID Учасника:</label>
+                        <input type="number" class="form-control" id="editSongContestantId{{ song[0] }}" name="contestant_id" value="{{ song[2] }}" required
+                        {% if role == 'operator' %} readonly="readonly" {% endif %}>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">Зберегти зміни</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Закрити</button>
+            </div>
+        </div>
+    </div>
+</div>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+</div>
+
+<!-- Modal for adding a new song -->
+<div id="songModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Додати Пісню</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ url_for('insert_song') }}">
+                    <div class="form-group">
+                        <label for="songTitle">Назва</label>
+                        <input type="text" class="form-control" id="songTitle" name="song_title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contestantId">ID Учасника</label>
+                        <input type="number" class="form-control" id="contestantId" name="contestant_id" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Додати Пісню</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+document.getElementById('songSearchInput').addEventListener('keyup', function () {
+    const query = this.value;
+
+    fetch(`/songs_table?query=${query}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            const tableBody = document.getElementById('songsTableBody');
+            tableBody.innerHTML = '';  // Clear existing rows
+
+            data.forEach(song => {
+                const row = `<tr>
+                    <td>${song[0]}</td>
+                    <td>${song[1]}</td>
+                    <td>${song[2]}</td>
+                    {% if role == 'administrator' or role == 'owner' %}
+                    <td>
+                        <a href="#" class="btn btn-warning btn-xs" data-toggle="modal"
+                           data-target="#editSongModal${song[0]}">Редагувати</a>
+                        <a href="/delete_song/${song[0]}" class="btn btn-danger btn-xs"
+                           onclick="return confirm('Are You Sure For Delete?')">Вилучити</a>
+                    </td>
+                    {% endif %}
+                </tr>`;
+
+                tableBody.insertAdjacentHTML('beforeend', row);
+            });
+        })
+        .catch(error => console.error('Error:', error));
+});
+
+
+</script>
+<script type="text/javascript" src="{{url_for('static', filename='js/jquery-3.2.1.min.js') }}"></script>
+<script type="text/javascript" src="{{url_for('static', filename='js/bootstrap.min.js')}}"></script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Register Page</title>
+<link href="{{url_for('static', filename = 'css/bootstrap.min.css')}}" rel="stylesheet">
+<link href="{{url_for('static', filename= 'css/sidebar.css')}}" rel="stylesheet">
+<link href="{{url_for('static', filename= 'css/style.css')}}" rel="stylesheet">
+</head>
+
+<body>
+
+<nav>
+                                     {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div id="flash-messages">
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+    <a href="#" id="logo">Anastars</a>
+    <ul>
+        <li><a href="{{ url_for('Index') }}">Головна</a></li>
+        <li class="dropdown">
+            <a href="">Таблиці</a>
+            <ul class="dropdown-content">
+                <li><a href="{{ url_for('contestants') }}">Конкурсанти</a></li>
+                <li><a href="{{ url_for('songs') }}">Пісні</a></li>
+                <li><a href="{{ url_for('broadcasts') }}">Ефіри</a></li>
+                <li><a href="{{ url_for('performances') }}">Виступи</a></li>
+                <li><a href="{{ url_for('smses') }}">SMS голосування</a></li>
+                <li><a href="{{ url_for('calls') }}">Дзвінки</a></li>
+                <li><a href="{{ url_for('juries') }}">Члени журі</a></li>
+                <li><a href="{{ url_for('juryVoting') }}">Голоси журі</a></li>
+                <li><a href="#">Результати</a></li>
+            </ul>
+        </li>
+        <li><a href="{{ url_for('queries') }}">Запити</a></li>
+        {% if role == 'owner' or role == 'administrator' %}
+        <li><a href="{{ url_for('adminpanel') }}">Адмін панель</a></li>
+        {% endif %}
+        <li><a href="{{ url_for('logout') }}" onclick="return confirm('Ви впевнені, що бажаєте вийти?')">Вийти</a></li>
+    </ul>
+</nav>
+
+<h1>Ласкаво просимо до системи управління базою даних Шоу Талантів Anastars!</h1>
+
+
+
+<script type="text/javascript" src="{{url_for('static', filename='js/jquery-3.2.1.min.js') }}"></script>
+<script type="text/javascript" src="{{url_for('static', filename='js/bootstrap.min.js')}}"></script>
+
+</body>
+</html>

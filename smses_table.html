@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+  <link href="{{url_for('static', filename = 'css/bootstrap.min.css')}}" rel="stylesheet">
+  <link href="{{url_for('static', filename= 'css/sidebar.css')}}" rel="stylesheet">
+<link href="{{url_for('static', filename= 'css/style.css')}}" rel="stylesheet">
+</head>
+<body>
+
+<nav>
+    <a href="#" id="logo">Anastars</a>
+    <ul>
+        <li><a href="{{ url_for('Index') }}">Головна</a></li>
+        <li class="dropdown">
+            <a href="">Таблиці</a>
+            <ul class="dropdown-content">
+                <li><a href="{{ url_for('contestants') }}">Конкурсанти</a></li>
+                <li><a href="{{ url_for('songs') }}">Пісні</a></li>
+                <li><a href="{{ url_for('broadcasts') }}">Ефіри</a></li>
+                <li><a href="{{ url_for('performances') }}">Виступи</a></li>
+                <li><a href="{{ url_for('smses') }}">SMS голосування</a></li>
+                <li><a href="{{ url_for('calls') }}">Дзвінки</a></li>
+                <li><a href="{{ url_for('juries') }}">Члени журі</a></li>
+                <li><a href="{{ url_for('juryVoting') }}">Голоси журі</a></li>
+                <li><a href="#">Результати</a></li>
+            </ul>
+        </li>
+        <li><a href="{{ url_for('queries') }}">Запити</a></li>
+        {% if role == 'owner' or role == 'administrator' %}
+        <li><a href="{{ url_for('adminpanel') }}">Адмін панель</a></li>
+        {% endif %}
+        <li><a href="{{ url_for('logout') }}" onclick="return confirm('Ви впевнені, що бажаєте вийти?')">Вийти</a></li>
+    </ul>
+</nav>
+
+                                 {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div id="flash-messages">
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<div class="col-md-12 mt-4">
+
+    <!-- Список смс голосування -->
+    <h2>СМС голосування
+        {% if role == 'administrator' or role == 'owner' %}
+        <button type="button" class="btn btn-success pull-right" data-toggle="modal" data-target="#broadcastModal">Додати смс</button>
+        {% endif %}
+    </h2>
+
+    <!-- Пошуковий input -->
+    <input type="text" id="smsSearchInput" class="form-control" placeholder="Пошук смс"/>
+
+    <div class="table-responsive-scroll">
+    <table class="table table-striped mt-3">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Номер телефону</th>
+            <th>ID ефіру</th>
+            <th>ID конкурсанта</th>
+            {% if role == 'administrator' or role == 'owner' or role == 'operator' %}
+            <th>Дія</th>
+            {% endif %}
+        </tr>
+        </thead>
+
+        <tbody id="smsTableBody">
+            {% for sms in smses %}
+            <tr>
+                <td>{{ sms.0 }}</td>
+                <td>{{ sms.1 }}</td>
+                <td>{{ sms.2 }}</td>
+                <td>{{ sms.3 }}</td>
+                {% if role == 'administrator' or role == 'owner' or role == 'operator' %}
+                <td>
+                    <a href="/update_worker/{{ sms.0 }}" class="btn btn-warning btn-xs" data-toggle="modal" data-target="#editWorkerModal{{ sms.0 }}">Редагувати</a>
+                    {% if role == 'administrator' or role == 'owner' %}
+                    <a href="{{ url_for('delete_sms', sms_id=sms.0) }}" class="btn btn-danger btn-xs" onclick="return confirm('Are You Sure For Delete?')">Вилучити</a>
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+
+            <!-- Modal для редагування смс -->
+            <div id="editWorkerModal{{ sms.0 }}" class="modal fade" role="dialog">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                            <h4 class="modal-title">Редагувати смс</h4>
+                        </div>
+                        <div class="modal-body">
+                            <form action="{{ url_for('update_sms') }}" method="POST">
+                                <input type="hidden" name="sms_id" value="{{ sms.0 }}">
+                                <div class="form-group">
+                                    <label>Номер телефону</label>
+                                    <input type="text" class="form-control" name="phone_number" value="{{ sms.1 }}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>ID ефіру</label>
+                                    <input type="text" class="form-control" name="broadcast_id" value="{{ sms.2 }}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>ID конкурсанта</label>
+                                    <input type="text" class="form-control" name="contestant_id" value="{{ sms.3 }}" required>
+                                </div>
+                                <div class="form-group">
+                                    <button class="btn btn-primary" type="submit">Оновити дані</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Закрити</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </tbody>
+    </table>
+        </div>
+</div>
+
+<!-- Модальне вікно для додавання смс голосування -->
+<div id="broadcastModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Введіть дані трансляції</h4>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('insert_sms') }}" method="POST">
+                    <div class="form-group">
+                        <label>Номер телефону</label>
+                        <input type="text" class="form-control" name="phone_number" required>
+                    </div>
+                    <div class="form-group">
+                        <label>ID ефіру</label>
+                        <input type="text" class="form-control" name="broadcast_id" required>
+                    </div>
+                    <div class="form-group">
+                        <label>ID конкурсанта</label>
+                        <input type="text" class="form-control" name="contestant_id" required>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-primary" type="submit">Додати смс</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Закрити</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('smsSearchInput').addEventListener('keyup', function () {
+    const query = encodeURIComponent(this.value);  // Кодуємо введений запит
+
+    fetch(`/smses_table?query=${query}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            const tableBody = document.getElementById('smsTableBody');
+            tableBody.innerHTML = '';  // Очистити поточні рядки
+
+            data.forEach(sms => {
+                const row = `<tr>
+                    <td>${sms[0]}</td>
+                    <td>${sms[1]}</td>
+                    <td>${sms[2]}</td>
+                    <td>${sms[3]}</td>
+                    {% if role == 'administrator' or role == 'owner' %}
+                    <td>
+                        <a href="/update_worker/${sms[0]}" class="btn btn-warning btn-xs" data-toggle="modal" data-target="#editWorkerModal${sms[0]}">Редагувати</a>
+                        <a href="/delete_sms/${sms[0]}" class="btn btn-danger btn-xs" onclick="return confirm('Are You Sure For Delete?')">Вилучити</a>
+                    </td>
+                    {% endif %}
+                </tr>`;
+
+                tableBody.insertAdjacentHTML('beforeend', row);
+            });
+        })
+        .catch(error => console.error('Error:', error));
+});
+</script>
+
+
+
+<script type="text/javascript" src="{{url_for('static', filename='js/jquery-3.2.1.min.js') }}"></script>
+<script type="text/javascript" src="{{url_for('static', filename='js/bootstrap.min.js')}}"></script>
+</body>
+</html>

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Запити</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <link href="{{url_for('static', filename= 'css/sidebar.css')}}" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+</head>
+
+<nav>
+    <a href="#" id="logo">Anastars</a>
+    <ul>
+        <li><a href="{{ url_for('Index') }}">Головна</a></li>
+        <li class="dropdown">
+            <a href="">Таблиці</a>
+            <ul class="dropdown-content">
+                <li><a href="{{ url_for('contestants') }}">Конкурсанти</a></li>
+                <li><a href="{{ url_for('songs') }}">Пісні</a></li>
+                <li><a href="{{ url_for('broadcasts') }}">Ефіри</a></li>
+                <li><a href="{{ url_for('performances') }}">Виступи</a></li>
+                <li><a href="{{ url_for('smses') }}">SMS голосування</a></li>
+                <li><a href="{{ url_for('calls') }}">Дзвінки</a></li>
+                <li><a href="{{ url_for('juries') }}">Члени журі</a></li>
+                <li><a href="{{ url_for('juryVoting') }}">Голоси журі</a></li>
+                <li><a href="#">Результати</a></li>
+            </ul>
+        </li>
+        <li><a href="{{ url_for('queries') }}">Запити</a></li>
+        {% if role == 'owner' or role == 'administrator' %}
+        <li><a href="{{ url_for('adminpanel') }}">Адмін панель</a></li>
+        {% endif %}
+        <li><a href="{{ url_for('logout') }}" onclick="return confirm('Ви впевнені, що бажаєте вийти?')">Вийти</a></li>
+    </ul>
+</nav>
+
+<body>
+
+<div class="container">
+    <h2>Виберіть запит для виконання</h2>
+    <div class="form-group">
+        <label for="querySelect">Запити:</label>
+        <select class="form-control" id="querySelect">
+            <option value="">-- Виберіть запит --</option>
+            <option value="query_2">Запит 1: Хто виступає в обраному ефірі</option>
+            <option value="query_3">Запит 2: Розклад виступів у заданому ефірі</option>
+            <option value="query_4">Запит 3: Пошук конкурсантів за назвою пісні</option>
+            <option value="query_6">Запит 4: Пошук конкурсантів за містом</option>
+            <option value="query_7">Запит 5: Хто набрав більше всіх SMS - Голосів</option>
+            <option value="query_10">Запит 6: Скільки повідомлень було відправлено кожного ефіру</option>
+            <option value="query_11">Запит 7: Скільки дзвінків було здійснено у кожному ефірі</option>
+            <option value="query_12">Запит 8: Скільки голосів набрав кожен конкурсант у першому прямому ефірі</option>
+            <option value="query_13">Запит 9: Хто набрав менше 70 балів</option>
+            <option value="query_14">Запит 10: Кількість виконань пісні</option>
+            <option value="query_15">Запит 11: Розклад трансляцій</option>
+            <option value="query_16">Запит 12: Призери конкурсу</option>
+        </select>
+    </div>
+    <button class="btn btn-primary" id="executeQueryBtn">Відобразити дані</button>
+</div>
+
+<!-- Модальне вікно для параметрів -->
+<div id="paramModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Введіть параметри запиту</h4>
+            </div>
+            <div class="modal-body">
+                <form id="paramForm">
+                    <div class="form-group" id="broadcastIdField" style="display:none;">
+                        <label for="broadcast_id">ID ефіру:</label>
+                        <input type="number" class="form-control" id="broadcast_id" name="broadcast_id" required>
+                    </div>
+                    <div class="form-group" id="songTitleField" style="display:none;">
+                        <label for="song_title">Назва пісні:</label>
+                        <input type="text" class="form-control" id="song_title" name="song_title" required>
+                    </div>
+                    <div class="form-group" id="cityNameField" style="display:none;">
+                        <label for="city_name">Частина назви міста:</label>
+                        <input type="text" class="form-control" id="city_name" name="city_name" required>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="submitParams">Виконати запит</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Відображення результатів -->
+<div class="container" id="resultsContainer" style="margin-top: 20px;">
+    <h3>Результати запиту</h3>
+    <table class="table table-bordered" id="resultsTable">
+        <thead>
+            <tr id="resultsHeader">
+                <!-- Заголовки колонок будуть динамічно змінюватися -->
+            </tr>
+        </thead>
+        <tbody id="resultsBody">
+            <!-- Результати будуть відображатися тут -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#executeQueryBtn').on('click', function() {
+        const selectedQuery = $('#querySelect').val();
+        $('#broadcastIdField').hide();
+        $('#songTitleField').hide();
+        $('#cityNameField').hide();
+
+        // Show/hide fields based on selected query
+        if (selectedQuery === 'query_2' || selectedQuery === 'query_3') {
+            $('#broadcastIdField').show();
+        } else if (selectedQuery === 'query_4') {
+            $('#songTitleField').show();
+        } else if (selectedQuery === 'query_6') { // For city name search
+            $('#cityNameField').show();
+        } else if (selectedQuery === 'query_7') { // Для нового запиту 7 не потрібно додаткових полів
+            $('#paramModal').modal('hide'); // Модальне вікно не потрібне
+            executeQuery(selectedQuery, {});
+            return; // Stop further processing
+        } else if (selectedQuery === 'query_11') { // Broadcast ID for new query
+            $('#broadcastIdField').show();
+        } else if (selectedQuery === 'query_10') {  // Hide the modal for query 10
+            $('#paramModal').modal('hide');
+            executeQuery(selectedQuery, {});
+            return; // Stop further processing
+        } else if (selectedQuery === 'query_12') {  // Hide the modal for query 10
+            $('#paramModal').modal('hide');
+            executeQuery(selectedQuery, {});
+            return; // Stop further processing
+        } else if (selectedQuery === 'query_13') {  // Hide the modal for query 10
+            $('#paramModal').modal('hide');
+            executeQuery(selectedQuery, {});
+            return; // Stop further processing
+        } else if (selectedQuery === 'query_14') {  // Hide the modal for query 10
+            $('#paramModal').modal('hide');
+            executeQuery(selectedQuery, {});
+            return; // Stop further processing
+        } else if (selectedQuery === 'query_15') {  // Hide the modal for query 10
+            $('#paramModal').modal('hide');
+            executeQuery(selectedQuery, {});
+            return; // Stop further processing
+        } else if (selectedQuery === 'query_16') {  // Hide the modal for query 10
+            $('#paramModal').modal('hide');
+            executeQuery(selectedQuery, {});
+            return; // Stop further processing
+        }
+
+        if (selectedQuery) {
+            $('#paramModal').modal('show');
+        }
+    });
+
+    $('#submitParams').on('click', function() {
+        const queryId = $('#querySelect').val();
+        const broadcastId = $('#broadcast_id').val();
+        const songTitle = $('#song_title').val();
+        const cityName = $('#city_name').val(); // For city name query
+
+        let params = {};
+        if (queryId === 'query_2' || queryId === 'query_3') {
+            params = { broadcast_id: broadcastId };
+        } else if (queryId === 'query_4') {
+            params = { song_title: songTitle };
+        } else if (queryId === 'query_6') {
+            params = { city_name: cityName };
+        } else if (queryId === 'query_11') {
+            params = { broadcast_id: broadcastId };
+        }
+
+        // Execute query after closing modal
+        $('#paramModal').modal('hide');
+        executeQuery(queryId, params);
+    });
+
+    // Helper function to execute query
+    function executeQuery(queryId, params) {
+        $.ajax({
+            url: "{{ url_for('execute_query') }}",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ query_id: queryId, params: params }),
+            success: function(data) {
+                $('#resultsBody').empty();
+                $('#resultsHeader').empty();
+
+                if (queryId === 'query_2') {
+                    $('#resultsHeader').append(`
+                        <th>ID конкурсанта</th>
+                        <th>Ім'я</th>
+                        <th>Прізвище</th>
+                        <th>Назва пісні</th>
+                    `);
+                    data.forEach(row => {
+                        $('#resultsBody').append(`
+                            <tr>
+                                <td>${row[0]}</td>
+                                <td>${row[1]}</td>
+                                <td>${row[2]}</td>
+                                <td>${row[3]}</td>
+                            </tr>
+                        `);
+                    });
+                } else if (queryId === 'query_3') {
+                    $('#resultsHeader').append(`
+                        <th>ID виступу</th>
+                        <th>Ім'я конкурсанта</th>
+                        <th>Прізвище конкурсанта</th>
+                        <th>Назва пісні</th>
+                        <th>Порядковий номер</th>
+                    `);
+                    data.forEach(row => {
+                        $('#resultsBody').append(`
+                            <tr>
+                                <td>${row[0]}</td>
+                                <td>${row[1]}</td>
+                                <td>${row[2]}</td>
+                                <td>${row[3]}</td>
+                                <td>${row[4]}</td>
+                            </tr>
+                        `);
+                    });
+                } else if (queryId === 'query_4') {
+                    $('#resultsHeader').append(`
+                        <th>ID конкурсанта</th>
+                        <th>Ім'я</th>
+                        <th>Прізвище</th>
+                        <th>Місто</th>
+                        <th>Назва пісні</th>
+                    `);
+                    data.forEach(row => {
+                        $('#resultsBody').append(`
+                            <tr>
+                                <td>${row[0]}</td>
+                                <td>${row[1]}</td>
+                                <td>${row[2]}</td>
+                                <td>${row[3]}</td>
+                                <td>${row[4]}</td>
+                            </tr>
+                        `);
+                    });
+                } else if (queryId === 'query_6') {
+                    $('#resultsHeader').append(`
+                        <th>ID конкурсанта</th>
+                        <th>Ім'я</th>
+                        <th>Прізвище</th>
+                        <th>Місто</th>
+                    `);
+                    data.forEach(row => {
+                        $('#resultsBody').append(`
+                            <tr>
+                                <td>${row[0]}</td>
+                                <td>${row[1]}</td>
+                                <td>${row[2]}</td>
+                                <td>${row[3]}</td>
+                            </tr>
+                        `);
+                    });
+                } else if (queryId === 'query_7') {
+            $('#resultsHeader').append(`
+                <th>ID конкурсанта</th>
+                <th>Ім'я</th>
+                <th>Прізвище</th>
+                <th>Кількість SMS-голосів</th>
+            `);
+            data.forEach(row => {
+                $('#resultsBody').append(`
+                    <tr>
+                        <td>${row[0]}</td>
+                        <td>${row[1]}</td>
+                        <td>${row[2]}</td>
+                        <td>${row[3]}</td>
+                    </tr>
+                `);
+            });
+                } else if (queryId === 'query_10') { // Display results for SMS count query
+                    $('#resultsHeader').append(`
+                        <th>Broadcast ID</th>
+                        <th>Кількість SMS</th>
+                    `);
+                    data.forEach(row => {
+                        $('#resultsBody').append(`
+                            <tr>
+                                <td>${row[0]}</td>
+                                <td>${row[1]}</td>
+                            </tr>
+                        `);
+                    });
+                } else if (queryId === 'query_11') { // Display results for phone call query
+                    $('#resultsHeader').append(`
+                        <th>Номер телефону</th>
+                        <th>Кількість дзвінків</th>
+                    `);
+                    data.forEach(row => {
+                        $('#resultsBody').append(`
+                            <tr>
+                                <td>${row[0]}</td>
+                                <td>${row[1]}</td>
+                            </tr>
+                        `);
+                    });
+                } else if (queryId === 'query_12') { // Display results for phone call query
+                    $('#resultsHeader').append(`
+                        <th>ID конкурсанта</th>
+                        <th>Ім'я</th>
+                        <th>Прізвище</th>
+                        <th>Кількість голосів</th>
+                    `);
+                    data.forEach(row => {
+                        $('#resultsBody').append(`
+                            <tr>
+                                <td>${row[0]}</td>
+                                <td>${row[1]}</td>
+                                <td>${row[2]}</td>
+                                <td>${row[3]}</td>
+                            </tr>
+                        `);
+                    });
+                } else if (queryId === 'query_13') { // Display results for phone call query
+                    $('#resultsHeader').append(`
+                        <th>ID конкурсанта</th>
+                        <th>Ім'я</th>
+                        <th>Прізвище</th>
+                        <th>Назва пісні</th>
+                    `);
+                    data.forEach(row => {
+                        $('#resultsBody').append(`
+                            <tr>
+                                <td>${row[0]}</td>
+                                <td>${row[1]}</td>
+                                <td>${row[2]}</td>
+                                <td>${row[3]}</td>
+                            </tr>
+                        `);
+                    });
+                } else if (queryId === 'query_14') { // Display results for phone call query
+                    $('#resultsHeader').append(`
+                        <th>ID конкурсанта</th>
+                        <th>Ім'я</th>
+                        <th>Прізвище</th>
+                        <th>Назва пісні</th>
+                        <th>Кількість виконань</th>
+                    `);
+                    data.forEach(row => {
+                        $('#resultsBody').append(`
+                            <tr>
+                                <td>${row[0]}</td>
+                                <td>${row[1]}</td>
+                                <td>${row[2]}</td>
+                                <td>${row[3]}</td>
+                                <td>${row[4]}</td>
+                            </tr>
+                        `);
+                    });
+                } else if (queryId === 'query_15') { // Display results for phone call query
+                    $('#resultsHeader').append(`І
+                        <th>ID ефіру</th>
+                        <th>Опис</th>
+                        <th>Дата ефіру</th>
+                        <th>Час ефіру</th>
+                    `);
+                    data.forEach(row => {
+                        $('#resultsBody').append(`
+                            <tr>
+                                <td>${row[0]}</td>
+                                <td>${row[1]}</td>
+                                <td>${row[2]}</td>
+                                <td>${row[3]}</td>
+                            </tr>
+                        `);
+                    });
+                } else if (queryId === 'query_16') { // Display results for phone call query
+                    $('#resultsHeader').append(`І
+                        <th>ID Учасника</th>
+                        <th>Ім'я</th>
+                        <th>Прізвище</th>
+                        <th>Голоси</th>
+                        <th>Місце</th>
+                    `);
+                    data.forEach(row => {
+                        $('#resultsBody').append(`
+                            <tr>
+                                <td>${row[0]}</td>
+                                <td>${row[1]}</td>
+                                <td>${row[2]}</td>
+                                <td>${row[3]}</td>
+                                <td>${row[4]}</td>
+                            </tr>
+                        `);
+                    });
+                }
+            }
+        });
+    }
+});
+
+</script>
+
+</body>
+</html>

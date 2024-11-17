@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+  <link href="{{url_for('static', filename = 'css/bootstrap.min.css')}}" rel="stylesheet">
+  <link href="{{url_for('static', filename= 'css/sidebar.css')}}" rel="stylesheet">
+<link href="{{url_for('static', filename= 'css/style.css')}}" rel="stylesheet">
+</head>
+<body>
+
+<nav>
+                                     {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div id="flash-messages">
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+    <a href="#" id="logo">Anastars</a>
+    <ul>
+        <li><a href="{{ url_for('Index') }}">Головна</a></li>
+        <li class="dropdown">
+            <a href="">Таблиці</a>
+            <ul class="dropdown-content">
+                <li><a href="{{ url_for('contestants') }}">Конкурсанти</a></li>
+                <li><a href="{{ url_for('songs') }}">Пісні</a></li>
+                <li><a href="{{ url_for('broadcasts') }}">Ефіри</a></li>
+                <li><a href="{{ url_for('performances') }}">Виступи</a></li>
+                <li><a href="{{ url_for('smses') }}">SMS голосування</a></li>
+                <li><a href="{{ url_for('calls') }}">Дзвінки</a></li>
+                <li><a href="{{ url_for('juries') }}">Члени журі</a></li>
+                <li><a href="{{ url_for('juryVoting') }}">Голоси журі</a></li>
+                <li><a href="#">Результати</a></li>
+            </ul>
+        </li>
+        <li><a href="{{ url_for('queries') }}">Запити</a></li>
+        {% if role == 'owner' or role == 'administrator' %}
+        <li><a href="{{ url_for('adminpanel') }}">Адмін панель</a></li>
+        {% endif %}
+        <li><a href="{{ url_for('logout') }}" onclick="return confirm('Ви впевнені, що бажаєте вийти?')">Вийти</a></li>
+    </ul>
+</nav>
+
+
+<div class="col-md-12 mt-4">
+    <h2 id="ll1">Розклад ефірів
+        {% if role == 'owner' or role == 'administrator' %}
+        <button type="button" class="btn btn-success pull-right" data-toggle="modal" data-target="#broadcastModal">Додати ефір</button>
+        {% endif %}
+    </h2>
+
+    <!-- Search input -->
+    <input type="text" id="broadcastSearchInput" class="form-control" placeholder="Пошук ефірів"/>
+<div class="table-responsive-scroll">
+    <table class="table table-striped mt-3">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Опис ефіру</th>
+            <th>Дата ефіру</th>
+            <th>Час ефіру</th>
+            {% if role == 'administrator' or role == 'owner' or role == 'operator' %}
+            <th>Дія</th>
+            {% endif %}
+        </tr>
+        </thead>
+        <tbody id="broadcastsTableBody">
+        {% for broadcast in broadcasts %}
+        <tr>
+            <td>{{ broadcast[0] }}</td>
+            <td>{{ broadcast[1] }}</td>
+            <td>{{ broadcast[2] }}</td>
+            <td>{{ broadcast[3] }}</td>
+            {% if role == 'administrator' or role == 'owner' or role == 'operator' %}
+            <td>
+                <a href="#" class="btn btn-warning btn-xs" data-toggle="modal" data-target="#editBroadcastModal{{ broadcast[0] }}">Редагувати</a>
+                {% if role == 'owner' or role == 'administrator' %}
+                <a href="/delete_broadcast/{{ broadcast[0] }}" class="btn btn-danger btn-xs" onclick="return confirm('Are You Sure For Delete?')">Вилучити</a>
+                {% endif %}
+            </td>
+            {% endif %}
+        </tr>
+
+<!-- Edit Modal for each broadcast -->
+<div id="editBroadcastModal{{ broadcast[0] }}" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редагувати ефір</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ url_for('update_broadcast') }}">
+                    <!-- Hidden field to send broadcast_id -->
+                    <input type="hidden" name="broadcast_id" value="{{ broadcast[0] }}">
+                    <div class="form-group">
+                        <label for="editDescription{{ broadcast[0] }}">Опис</label>
+                        <input type="text" class="form-control" id="editDescription{{ broadcast[0] }}" name="description" value="{{ broadcast[1] }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editDate{{ broadcast[0] }}">Дата ефіру</label>
+                        <input type="date" class="form-control" id="editDate{{ broadcast[0] }}" name="broadcast_date" value="{{ broadcast[2] }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTime{{ broadcast[0] }}">Час ефіру</label>
+                        <input type="time" class="form-control" id="editTime{{ broadcast[0] }}" name="broadcast_time" value="{{ broadcast[3] }}" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Зберегти зміни</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<!-- Add Modal for broadcasts -->
+<div id="broadcastModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Додати ефір</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{{ url_for('insert_broadcast') }}">
+                    <div class="form-group">
+                        <label for="broadcastDescription">Опис ефіру</label>
+                        <input type="text" class="form-control" id="broadcastDescription" name="description" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="broadcastDate">Дата ефіру</label>
+                        <input type="date" class="form-control" id="broadcastDate" name="broadcast_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="broadcastTime">Час ефіру</label>
+                        <input type="time" class="form-control" id="broadcastTime" name="broadcast_time" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Додати ефір</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+document.getElementById('broadcastSearchInput').addEventListener('keyup', function () {
+    const query = this.value;
+
+    fetch(`/broadcasts_table?query=${query}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const tableBody = document.getElementById('broadcastsTableBody');
+        tableBody.innerHTML = '';  // Clear existing rows
+
+        // Перевірка чи отримано масив
+        if (Array.isArray(data)) {
+            data.forEach(broadcast => {
+                // Форматування дати, якщо вона є в неправильному форматі
+                const formattedDate = new Date(broadcast[2]).toISOString().split('T')[0]; // 'YYYY-MM-DD'
+
+                const row = `<tr>
+                    <td>${broadcast[0]}</td>
+                    <td>${broadcast[1]}</td>
+                    <td>${formattedDate}</td> <!-- Форматуємо дату для таблиці -->
+                    <td>${broadcast[3]}</td>
+                    {% if role == 'administrator' or role == 'owner' %}
+                    <td>
+                        <a href="#" class="btn btn-warning btn-xs" data-toggle="modal"
+                           data-target="#editBroadcastModal${broadcast[0]}">Редагувати</a>
+                        <a href="/delete_broadcast/${broadcast[0]}" class="btn btn-danger btn-xs"
+                           onclick="return confirm('Are You Sure For Delete?')">Вилучити</a>
+                    </td>
+                    {% endif %}
+                </tr>`;
+
+                tableBody.insertAdjacentHTML('beforeend', row);
+            });
+        } else {
+            console.error("Data is not an array", data);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+});
+
+
+
+
+</script>
+<script type="text/javascript" src="{{url_for('static', filename='js/jquery-3.2.1.min.js') }}"></script>
+<script type="text/javascript" src="{{url_for('static', filename='js/bootstrap.min.js')}}"></script>
+</body>
+</html>
